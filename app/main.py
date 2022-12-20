@@ -7,82 +7,75 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 
+
 app = FastAPI()
 
+
 class Post(BaseModel):
-  title: str
-  content: str
-  published: bool = False
-  rating: Optional[int] = None
+    title: str
+    content: str
+    published: bool = False
+    rating: Optional[int] = None
 
 
 # Database connection
 while True:
-  try:
-    connection = psycopg2.connect(host='localhost', database='blog_api',
-                                  user='postgres', password='', cursor_factory=RealDictCursor)
-    cursor = connection.cursor()
-    print("Database connected successfully")
-    break
-  except Exception as error:
-    print(f"Database connection failed {error}")
-    time.sleep(4)
-
-# Storing post inside a List for demo purposes
-my_posts = [
-  {"id":1, "title": "Post A", "content": "Great post to be honest"},
-  {"id":2, "title": "Post B", "content": "Medium post to be honest"},
-  ]
-
-
-def find_post(post_id):
-  for idx, post in enumerate(my_posts):
-    if post["id"] == int(post_id):
-      return [idx, post]
-  return None
+    try:
+        connection = psycopg2.connect(host='localhost', database='blog_api',
+                                      user='postgres', password='itexico1', cursor_factory=RealDictCursor)
+        cursor = connection.cursor()
+        print("Database connected successfully")
+        break
+    except Exception as error:
+        print(f"Database connection failed {error}")
+        time.sleep(4)
 
 
 @app.get("/posts")
 async def get_post():
-    return {"data": my_posts}
+    cursor.execute("""SELECT * FROM posts""")
+    posts = cursor.fetchall()
+
+    return {"data": posts}
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-async def create_post(payload:Post):
-  post = payload.dict()
-  post["id"] = randrange(0, 10000)
-  my_posts.append(post)
-  return{"data":post}
+async def create_post(payload: Post):
+    cursor.execute(""" INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published))
+    new_post = cursor.fetchone()
+    connection.commit()
+
+    return {"data": new_post}
 
 
 @app.get("/posts/{id}")
-def get_post(id:int, response: Response):
-  _, post = find_post(id)
+def get_post(id: int, response: Response):
+  cursor.execute(""" SELECT * from posts WHERE id = %s """, (str(id)))
+  post = cursor.fetchone()
 
   if not post:
-    response.status_code = status.HTTP_404_NOT_FOUND
+      response.status_code = status.HTTP_404_NOT_FOUND
 
-  return{"data": post}
+  return {"data": post}
 
 
 @app.put("/posts/{id}")
 def update_post(id: int, payload: Post):
-  idx, post = find_post(id)
-  if not post:
-    raise HTTPException(status_code=404, detail="Post not found")
+    cursor.execute(""" UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s RETURNING *  """, (payload.title, payload.content, payload.published, str(id)))
+    updated_post = cursor.fetchone()
+    connection.commit()
 
-  post_dict = payload.dict()
-  post_dict["id"] = id
-  my_posts[idx] = post_dict
-  return {"data": post_dict}
+    if not updated_post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    return {"data": updated_post}
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id:int):
-  _, post = find_post(id)
-  if not post:
-    raise HTTPException(status_code=404, detail="Post not found")
+def delete_post(id: int):
+  cursor.execute(""" DELETE from posts WHERE id = %s RETURNING * """, (str(id)))
+  deleted_post = cursor.fetchone()
+  connection.commit()
 
-  my_posts[:] = (post for post in my_posts if post["id"] != int(id))
-
-  return {"data": my_posts}
+  if not deleted_post:
+      raise HTTPException(status_code=404, detail="Post not found")
