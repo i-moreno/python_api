@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
 
+# Post schemas
 class PostBase(BaseModel):
     title:str
     content: str
@@ -17,6 +18,7 @@ class PostResponse(PostBase):
     class Config:
         orm_mode = True
 
+# User Schemas
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -29,12 +31,9 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
+# Auth schemas
 class Token(BaseModel):
-    access_token: str
+    token: str
     token_type: str
 
 class TokenData(BaseModel):

@@ -16,7 +16,7 @@ async def get_post(db: Session = Depends(get_db)):
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
-async def create_post(payload: PostCreate, db: Session = Depends(get_db), user_id: int =  Depends(oauth2.get_current_user)):
+async def create_post(payload: PostCreate, db: Session = Depends(get_db), user: int =  Depends(oauth2.get_current_user)):
   # cursor.execute(""" INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published))
   # new_post = cursor.fetchone()
   # ** it's equal to -> title=payload.title, content=payload.content and so on
@@ -41,7 +41,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{id}", response_model=PostResponse)
-def update_post(id: int, payload: PostBase, db: Session = Depends(get_db)):
+def update_post(id: int, payload: PostBase, db: Session = Depends(get_db), user: int = Depends(oauth2.get_current_user)):
     # cursor.execute(""" UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s RETURNING *  """, (payload.title, payload.content, payload.published, str(id)))
     # updated_post = cursor.fetchone()
   post = db.query(models.Post).filter(models.Post.id == id)
@@ -57,7 +57,7 @@ def update_post(id: int, payload: PostBase, db: Session = Depends(get_db)):
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db: Session = Depends(get_db)):
+def delete_post(id: int, db: Session = Depends(get_db), user: int = Depends(oauth2.get_current_user)):
   # cursor.execute(""" DELETE from posts WHERE id = %s RETURNING * """, (str(id)))
   # deleted_post = cursor.fetchone()
   post = db.query(models.Post).filter(models.Post.id == id)
