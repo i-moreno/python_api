@@ -2,6 +2,21 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
 
+
+# User Schemas
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
 # Post schemas
 class PostBase(BaseModel):
     title:str
@@ -13,19 +28,7 @@ class PostCreate(PostBase):
 
 class PostResponse(PostBase):
     id: int
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
-
-# User Schemas
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserResponse(BaseModel):
-    id: int
-    email: EmailStr
+    author: UserResponse
     created_at: datetime
 
     class Config:

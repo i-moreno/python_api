@@ -8,7 +8,7 @@ from ..database import get_db
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
 @router.get("/", response_model=List[PostResponse])
-async def get_post(db: Session = Depends(get_db)):
+async def get_post(db: Session = Depends(get_db), user = Depends(oauth2.get_current_user)):
   # cursor.execute("""SELECT * FROM posts""")
   # posts = cursor.fetchall()
   posts = db.query(models.Post).all()
@@ -16,11 +16,15 @@ async def get_post(db: Session = Depends(get_db)):
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
-async def create_post(payload: PostCreate, db: Session = Depends(get_db), user: int =  Depends(oauth2.get_current_user)):
+async def create_post(payload: PostCreate, db: Session = Depends(get_db), user =  Depends(oauth2.get_current_user)):
   # cursor.execute(""" INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (payload.title, payload.content, payload.published))
   # new_post = cursor.fetchone()
   # ** it's equal to -> title=payload.title, content=payload.content and so on
-  new_post = models.Post(**payload.dict())
+
+  req_body = payload.dict()
+  req_body["author_id"] = user.id
+
+  new_post = models.Post(**req_body)
   db.add(new_post)  # Add the newly created post to db
   db.commit()  # Commit changes to db
   db.refresh(new_post)  # Retrieve and store the new post in new_post variable
@@ -28,7 +32,7 @@ async def create_post(payload: PostCreate, db: Session = Depends(get_db), user: 
 
 
 @router.get("/{id}", response_model=PostResponse)
-def get_post(id: int, db: Session = Depends(get_db)):
+def get_post(id: int, db: Session = Depends(get_db), user=Depends(oauth2.get_current_user)):
   # cursor.execute(""" SELECT * from posts WHERE id = %s """, (str(id)))
   # post = cursor.fetchone()
   post = db.query(models.Post).filter(models.Post.id == id).first()
@@ -41,13 +45,16 @@ def get_post(id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{id}", response_model=PostResponse)
-def update_post(id: int, payload: PostBase, db: Session = Depends(get_db), user: int = Depends(oauth2.get_current_user)):
+def update_post(id: int, payload: PostBase, db: Session = Depends(get_db), user = Depends(oauth2.get_current_user)):
     # cursor.execute(""" UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s RETURNING *  """, (payload.title, payload.content, payload.published, str(id)))
     # updated_post = cursor.fetchone()
   post = db.query(models.Post).filter(models.Post.id == id)
 
   if not post.first():
-      raise HTTPException(status_code=404, detail="Post not found")
+    raise HTTPException(status_code=404, detail="Post not found")
+
+  if post.first().author_id != user.id:
+    raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
   post.update(payload.dict(), synchronize_session=False)
   db.commit()
@@ -57,13 +64,16 @@ def update_post(id: int, payload: PostBase, db: Session = Depends(get_db), user:
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db: Session = Depends(get_db), user: int = Depends(oauth2.get_current_user)):
+def delete_post(id: int, db: Session = Depends(get_db), user= Depends(oauth2.get_current_user)):
   # cursor.execute(""" DELETE from posts WHERE id = %s RETURNING * """, (str(id)))
   # deleted_post = cursor.fetchone()
   post = db.query(models.Post).filter(models.Post.id == id)
 
   if not post.first():
-      raise HTTPException(status_code=404, detail="Post not found")
+    raise HTTPException(status_code=404, detail="Post not found")
+
+  if post.first().author_id != user.id:
+    raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
   post.delete(synchronize_session=False)
   db.commit()
