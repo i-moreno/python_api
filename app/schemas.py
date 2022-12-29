@@ -2,7 +2,6 @@ from enum import IntEnum
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
-from pydantic.types import conint
 
 # User Schemas
 class UserCreate(BaseModel):
@@ -36,6 +35,9 @@ class PostResponse(PostBase):
     class Config:
         orm_mode = True
 
+class PostWithVotes(BaseModel):
+    Post: PostResponse
+    votes: int
 
 # Auth schemas
 class Token(BaseModel):
