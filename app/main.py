@@ -24,10 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+def home():
+    return {"message": "Ping pong"}
+
+
 app.include_router(posts.router)
 app.include_router(users.router)
 app.include_router(votes.router)
 app.include_router(auth.router)
-
-
-
